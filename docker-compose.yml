@@ -1,0 +1,51 @@
+version: "3.9"
+services:
+  app:
+    build:
+      context: ./nodejs    
+      dockerfile: Dockerfile
+    image: node:15
+    container_name: app
+    #entrypoint: dockerize -wait tcp://nodedb:3306 -timeout 10s docker-entrypoint.sh
+    command: dockerize -wait tcp://nodedb:3306 -timeout 10s
+             bash -c "node index.js"
+        
+    tty: true
+    ports: 
+      - "3000:3000"
+    networks:
+      - nodejsnw
+    depends_on:
+      - nodedb
+  
+  nodedb:
+    image: mysql:5.7.37
+    command: --innodb-use-native-aio=0
+    container_name: nodedb
+    environment:
+      - MYSQL_DATABASE=nodedb
+      - MYSQL_ROOT_PASSWORD=root123
+    tty: true
+    restart: always
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./mysql/data:/var/lib/mysql
+      - ./mysql/script.sql:/docker-entrypoint-initdb.d/script.sql      
+    networks:
+      - nodejsnw
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: nginx
+    networks:
+      - nodejsnw
+    ports:
+      - "8080:8080"
+    depends_on:
+      - app
+networks:
+  nodejsnw:
+    driver: bridge
+  
